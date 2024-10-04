@@ -1,0 +1,8 @@
+{
+  "scroll-sepolia": {
+    "AirdropToken": {
+      "address": "0x79E312eF8d4E25b68db389e1CbF2F87d20C5210F",
+      "startBlock": 6871310
+    }
+  }
+}
