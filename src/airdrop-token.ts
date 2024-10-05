@@ -1,35 +1,32 @@
-import {
-  Approval as ApprovalEvent,
-  Transfer as TransferEvent
-} from "../generated/AirdropToken/AirdropToken"
-import { Approval, Transfer } from "../generated/schema"
-
-export function handleApproval(event: ApprovalEvent): void {
-  let entity = new Approval(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
-  )
-  entity.owner = event.params.owner
-  entity.spender = event.params.spender
-  entity.value = event.params.value
-
-  entity.blockNumber = event.block.number
-  entity.blockTimestamp = event.block.timestamp
-  entity.transactionHash = event.transaction.hash
-
-  entity.save()
-}
+import { Transfer as TransferEvent } from "../generated/AirdropToken/AirdropToken";
+import { Transfer } from "../generated/schema";
+import { loadToken, loadUser } from "./util";
 
 export function handleTransfer(event: TransferEvent): void {
-  let entity = new Transfer(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
-  )
-  entity.from = event.params.from
-  entity.to = event.params.to
-  entity.value = event.params.value
+  // Load the token entity, or create if doesn't exist
+  let token = loadToken(event.address.toHex());
 
-  entity.blockNumber = event.block.number
-  entity.blockTimestamp = event.block.timestamp
-  entity.transactionHash = event.transaction.hash
+  // Update the token totalSupply
+  token.totalSupply = token.totalSupply.plus(event.params.value);
 
-  entity.save()
+  // Load the sender and receiver
+  let fromUser = loadUser(event.params.from.toHex());
+  let toUser = loadUser(event.params.to.toHex());
+
+  // Update balances
+  fromUser.balance = fromUser.balance.minus(event.params.value);
+  toUser.balance = toUser.balance.plus(event.params.value);
+
+  let transfer = new Transfer(event.transaction.hash.toHex());
+  transfer.from = fromUser.id;
+  transfer.to = toUser.id;
+  transfer.value = event.params.value;
+  transfer.token = token.id;
+  transfer.timestamp = event.block.timestamp;
+  transfer.transactionHash = event.transaction.hash;
+
+  token.save();
+  fromUser.save();
+  toUser.save();
+  transfer.save();
 }
